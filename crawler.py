@@ -114,7 +114,7 @@ class Crawler:
         # Check if the 'content' key exists, if not then the url is not in the corpus and we will go onto the next url
         if url_data.get('content'):
             # Assuming content is UTF-8 encoded, decode the binary into a string
-            content = url_data['content'].decode('utf-8', 'ignore')  
+            content = url_data['content']#.decode('utf-8', errors = 'ignore')  
 
             # Parse content using lxml library, create heirarchal structure of html document
             tree = html.fromstring(content)

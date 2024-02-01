@@ -3,7 +3,7 @@ import re
 from urllib.parse import urlparse #Breaks url into components (scheme, netloc, path, params, query,fragment,username, password, hostname, port)
 
 from urllib.parse import urljoin # Used to build an absolute URL
-from lxml import html
+from lxml import html, etree
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ class Crawler:
             # 3 downloaded urls
             downloaded_URLS.append(url)
             
-            
+            print(f"PAGE URL: {url_data.get('url')}") #debugg
             for next_link in self.extract_next_links(url_data):
                 if self.is_valid(next_link):
                     if self.corpus.get_file_name(next_link) is not None:
@@ -111,22 +111,35 @@ class Crawler:
         
         outputLinks = []
         
-        # Check if the 'content' key exists, if not then the url is not in the corpus and we will go onto the next url
-        if url_data.get('content'):
+        # Check if the 'content' key exists and if the key has a value, if not then the url is not in the corpus and we will go onto the next url
+        if url_data.get('content') and url_data['content'] is not None:
+            #content_type = url_data.get('content-type')
+            #print(f'URL CONTENT TYPE: {content_type}')
+            
+            '''
+            #Exit early when we get to a .classpath
+            if url_data.get('final_url') and url_data['final_url'].endswith('.classpath'):
+                return outputLinks
+            '''
+            #print(f"PAGE URL: {url_data.get('url')}")
             # Assuming content is UTF-8 encoded, decode the binary into a string
-            content = url_data['content']#.decode('utf-8', errors = 'ignore')  
+            content = url_data['content']#.decode('utf-8', errors='ignore') 
 
-            # Parse content using lxml library, create heirarchal structure of html document
-            tree = html.fromstring(content)
-
-            # Extract links from the tree.
-            # Links are identified by href attributes
-            for link in tree.xpath('//a/@href'):
-                #Absolute for includes protocol, subdomain, domain, and path
-                #urlJoin(base_url, relative_url)
-                absolute_url = urljoin(url_data['final_url'], link)
-                outputLinks.append(absolute_url)
-        
+            try:
+                if content.strip(): # Remove trailing whitespace just in case a document is only white space    
+                    # Parse content using lxml library, create heirarchal structure of html document
+                    tree = html.fromstring(content)
+                    # Extract links from the tree.
+                    # Links are identified by href attributes
+                    for link in tree.xpath('//a/@href'):
+                        #Absolute for includes protocol, subdomain, domain, and path
+                        #urlJoin(base_url, relative_url)
+                        absolute_url = urljoin(url_data['final_url'], link)
+                        outputLinks.append(absolute_url)
+                        
+            except etree.ParserError as e:
+                pass
+            
         return outputLinks
     
 

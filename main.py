@@ -25,3 +25,8 @@ if __name__ == "__main__":
     # Instantiates a crawler object and starts crawling
     crawler = Crawler(frontier, corpus)
     crawler.start_crawling()
+
+
+
+#C:\Users\hanjd\AppData\Local\Programs\Python\Python310\python.exe main.py "C:\Users\hanjd\Desktop\121\Project2\web_dump_zipfile\spacetime_crawler_data"
+

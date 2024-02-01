@@ -1,6 +1,6 @@
 import logging
 import re
-from urllib.parse import urlparse
+from urllib.parse import urlparse #Breaks url into components (scheme, netloc, path, params, query,fragment,username, password, hostname, port)
 
 from urllib.parse import urljoin # Used to build an absolute URL
 from lxml import html
@@ -63,8 +63,25 @@ class Crawler:
             url_data = self.corpus.fetch_url(url)
             
             #Analytics
-            
-            downloaded_URLS.append(url) # 3 downloaded urls
+            # 1 visited subdomains
+            components = urlparse(url) # breaks down url into components
+            splitHostname = components.hostname.split(".") # Splits the hostname ex. ics.uci.edu, ics is the subdomain
+            if len(splitHostname) > 1: # Check if there is a subdomain
+                subdomain = splitHostname[0]
+                if subdomain in visited_Subdomains.keys():
+                    # Add url to subdomain and count
+                    visited_Subdomains[subdomain]['uniqueURLs'].add(url)
+                    visited_Subdomains[subdomain]['count'] = len(visited_Subdomains[subdomain]['uniqueURLs'])
+
+                else: # Create a new key, Value pair
+                    visited_Subdomains[subdomain] = {'count' : 0, 'uniqueURLs' : set()}
+                    visited_Subdomains[subdomain]['uniqueURLs'].add(url)
+                    visited_Subdomains[subdomain]['count'] = len(visited_Subdomains[subdomain]['uniqueURLs'])
+
+            # Else No subdomain, for example a website like www.uci.edu
+
+            # 3 downloaded urls
+            downloaded_URLS.append(url)
             
             
             for next_link in self.extract_next_links(url_data):

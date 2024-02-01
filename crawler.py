@@ -84,6 +84,7 @@ class Crawler:
             downloaded_URLS.append(url)
             
             print(f"PAGE URL: {url_data.get('url')}") #debugg
+            print(f"FINAL URL: {url_data.get('final_url')}")
             for next_link in self.extract_next_links(url_data):
                 if self.is_valid(next_link):
                     if self.corpus.get_file_name(next_link) is not None:
@@ -115,15 +116,14 @@ class Crawler:
         if url_data.get('content') and url_data['content'] is not None:
             #content_type = url_data.get('content-type')
             #print(f'URL CONTENT TYPE: {content_type}')
-            
             '''
+            final url is none
             #Exit early when we get to a .classpath
             if url_data.get('final_url') and url_data['final_url'].endswith('.classpath'):
                 return outputLinks
             '''
             #print(f"PAGE URL: {url_data.get('url')}")
-            # Assuming content is UTF-8 encoded, decode the binary into a string
-            content = url_data['content']#.decode('utf-8', errors='ignore') 
+            content = url_data['content'] #.decode('utf-8', errors='ignore') # Assuming content is UTF-8 encoded, decode the binary into a string - no
 
             try:
                 if content.strip(): # Remove trailing whitespace just in case a document is only white space    
@@ -137,7 +137,9 @@ class Crawler:
                         absolute_url = urljoin(url_data['final_url'], link)
                         outputLinks.append(absolute_url)
                         
-            except etree.ParserError as e:
+            except etree.ParserError:
+                pass
+            except ValueError:
                 pass
             
         return outputLinks

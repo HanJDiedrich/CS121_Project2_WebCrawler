@@ -146,12 +146,24 @@ class Crawler:
             
         #While loop over, frontier has been searched
         
+            
+        #most_Common_Words = self.sortFreq(totalWordFreq)#returns a list of tuple
         #Calculate top 50 most common words for analytic 5:
         print(totalWordFreq)
-        most_Common_Words = self.sortFreq(totalWordFreq)#returns a list of tuples
+        sortedWords = {}
+        for word, freq in sorted(totalWordFreq.items(), key=lambda x: -x[1]):
+            sortedWords[word] = freq
+        
+        
         top50 = []
-        for i in range(0,50):
-            top50.append(most_Common_Words[i][0])
+        topCount = 0
+        for key, value in sortedWords.items():
+            #print(f"{key}: {value}")
+            top50.append(key)
+            topCount += key
+            if topCount == 50:
+                break
+            
     
         '''
         WRITE DATA TO ANALYTICS.TXT

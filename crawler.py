@@ -105,6 +105,7 @@ class Crawler:
             stuff = self.extract_next_links(url_data) #tuple of outputlinks list and words list
             
             pageWords = stuff[1] #list of all words in a page
+            #print(pageWords)
             #{words: freq}
             #4 longest page:
             #pageUrl, length
@@ -114,15 +115,16 @@ class Crawler:
                 longest_Page = len(pageWords)
                 
             #5 most common words
-            pageWordFrequencies = self.computeWordFrequencies(self.tokenize(pageWords))
-            for key, value in pageWordFrequencies.items():
-                if key not in english_Stop_Words: #check and skip over stop words
-                    if key not in totalWordFreq: #check if its a new word
-                        totalWordFreq[key] = value
-                    else:
-                        totalWordFreq[key] += value #increment current value
-                
-                
+            if len(pageWords) != 0:
+                pageWordFrequencies = self.computeWordFrequencies(self.tokenize(pageWords))
+                #print(pageWordFrequencies)
+                for key, value in pageWordFrequencies.items():
+                    if key not in english_Stop_Words: #check and skip over stop words
+                        if key not in totalWordFreq: #check if its a new word
+                            totalWordFreq[key] = value
+                        else:
+                            totalWordFreq[key] += value #increment current value
+            #print(totalWordFreq)  
             pageOutLinks = stuff[0]
             #print(f'PAGEOUTLINKS::::::{pageOutLinks}')
             outLinkCount = 0
@@ -145,6 +147,7 @@ class Crawler:
         #While loop over, frontier has been searched
         
         #Calculate top 50 most common words for analytic 5:
+        print(totalWordFreq)
         most_Common_Words = self.sortFreq(totalWordFreq)#returns a list of tuples
         top50 = []
         for i in range(0,50):
@@ -225,7 +228,7 @@ class Crawler:
                 pass
             except ValueError:
                 pass
-            
+        #print(words)
         return outputLinks, words
     
 
@@ -261,33 +264,13 @@ class Crawler:
         
         '''
     
-    def tokenize(self,fData):
+    def tokenize(self,fData): #data is a list
         #alphanumeric - we are referring to English alphabet a-z and number 0-9
-        acceptableCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        #acceptableCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
         tokens = []
-        i = 0
-        temp = ""
-        while (i < len(fData)):
-            if (fData[i] in acceptableCharacters) or fData[i].isnumeric():
-                temp += fData[i]
-                #reached end of file and file end contains a qualifying char
-                if i == len(fData) - 1:           
-                    temp = temp.lower()
-                    tokens.append(temp)
-                    temp = ""
-                i += 1
-                continue
-            elif temp == "":
-                i += 1
-            elif temp != "" and i == len(fData):
-                temp = temp.lower()
-                tokens.append(temp)
-                temp = ""
-            else:
-                temp = temp.lower()
-                tokens.append(temp)
-                temp = ""
-                
+        for word in fData:
+            if word.isalnum():
+                tokens.append(word.lower())
         return tokens
 
     #Map<Token,Count> computeWordFrequencies(List<Token>) O(n)
@@ -307,6 +290,7 @@ class Crawler:
         for key, value in freqMap.items():
             temp = (key, value)
             unordered.append(temp) 
+        
         
         #sorted by frequency (tuples)
         ordered = self.selectionSort(unordered)

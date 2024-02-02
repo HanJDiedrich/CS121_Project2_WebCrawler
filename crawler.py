@@ -25,17 +25,21 @@ class Crawler:
         
         Also calculate/record analytics here
         1. Visited subdomains, count how many unique URLs processed from each subdomain (Dict)
-        2. Page with most valid out links (Dict)
+        2. Page with most valid out links 
         3. List of downloaded URLs and identified traps (List)
         4. Longest page in words (exclude html markup) (int)
         5. 50 most common words, ignore stop words (List)
         """
         visited_Subdomains = {}
-        valid_Out_Links = {}
+        mostOutLinks = 0
+        pageWithMostOutLinks = None
         downloaded_URLS = []
         identified_Traps = []
         longest_Page = 0
+        longestPageName = None
+        totalWordFreq = {}
         most_Common_Words = []
+        valid_links_count = 0
         
         english_Stop_Words = "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "aren't", "as", "at", 
         "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", 
@@ -79,17 +83,94 @@ class Crawler:
                     visited_Subdomains[subdomain]['count'] = len(visited_Subdomains[subdomain]['uniqueURLs'])
 
             # Else No subdomain, for example a website like www.uci.edu
-
+            '''
+            temp_vl_count = 0
+            for next_link in self.extract_next_links(url_data):
+                if self.is_valid(next_link):
+                    temp_vl_count += 1
+                    valid_out_links.add(next_link)
+                    if self.corpus.get_file_name(next_link) is not None:
+                        self.frontier.add_url(next_link)
+            if temp_vl_count > valid_links_count:
+                valid_links_count = temp_vl_count
+                most_vol_url = next_link
+            '''
             # 3 downloaded urls
             downloaded_URLS.append(url)
             
-            print(f"PAGE URL: {url_data.get('url')}") #debugg
-            print(f"FINAL URL: {url_data.get('final_url')}")
-            for next_link in self.extract_next_links(url_data):
+            #print(f"PAGE URL: {url_data.get('url')}") #debugg
+            #print(f"FINAL URL: {url_data.get('final_url')}")
+            #Modified extract next links to return tuple (outputLinks, words)
+            
+            stuff = self.extract_next_links(url_data) #tuple of outputlinks list and words list
+            
+            pageWords = stuff[1] #list of all words in a page
+            #{words: freq}
+            #4 longest page:
+            #pageUrl, length
+            #currentPage = {url, len(pageWords)}
+            if max(longest_Page, len(pageWords)) == len(pageWords):# if this is a new max length
+                longestPageName = url
+                longest_Page = len(pageWords)
+                
+            #5 most common words
+            pageWordFrequencies = self.computeWordFrequencies(self.tokenize(pageWords))
+            for key, value in pageWordFrequencies.items():
+                if key not in english_Stop_Words: #check and skip over stop words
+                    if key not in totalWordFreq: #check if its a new word
+                        totalWordFreq[key] = value
+                    else:
+                        totalWordFreq[key] += value #increment current value
+                
+                
+            pageOutLinks = stuff[0]
+            #print(f'PAGEOUTLINKS::::::{pageOutLinks}')
+            outLinkCount = 0
+
+            for next_link in pageOutLinks:
                 if self.is_valid(next_link):
+                    outLinkCount += 1
                     if self.corpus.get_file_name(next_link) is not None:
                         self.frontier.add_url(next_link)
+                    
+                else:
+                    #Not valid means its a trap
+                    identified_Traps.append(next_link)
+            #2
+            if max(mostOutLinks, outLinkCount) == outLinkCount:
+                pageWithMostOutLinks = url
+                mostOutLinks = outLinkCount
+            
+            
+        #While loop over, frontier has been searched
+        
+        #Calculate top 50 most common words for analytic 5:
+        most_Common_Words = self.sortFreq(totalWordFreq)#returns a list of tuples
+        top50 = []
+        for i in range(0,50):
+            top50.append(most_Common_Words[i][0])
+    
+        '''
+        WRITE DATA TO ANALYTICS.TXT
+        #1:
+            visited_Subdomains = DICT{subdomain, DICT} -> {'count' : 0, 'uniqueURLs' : set()}
+            to access # of different urls, go to visited_Subdomains[subdomainName]['count']
+        #2:
+            pageWithMostOutLinks = string of the URL
+            mostOutLinks = number of max outlinks
+        #3:
+            downloaded_URLS = [] list
+            identified_Traps = [] list
+        #4: 
+            longestPageName = string of the URL
+            longest_Page = number length of longest page
 
+        #5:
+            list of top 50 words
+        
+        '''
+        
+        
     def extract_next_links(self, url_data):
         """
         The url_data coming from the fetch_url method will be given as a parameter to this method. url_data contains the
@@ -109,9 +190,8 @@ class Crawler:
         is_redirected : 
         final_url : 
         """
-        
         outputLinks = []
-        
+        words = []
         # Check if the 'content' key exists and if the key has a value, if not then the url is not in the corpus and we will go onto the next url
         if url_data.get('content') and url_data['content'] is not None:
             #content_type = url_data.get('content-type')
@@ -129,6 +209,11 @@ class Crawler:
                 if content.strip(): # Remove trailing whitespace just in case a document is only white space    
                     # Parse content using lxml library, create heirarchal structure of html document
                     tree = html.fromstring(content)
+                    #extract text content from the tree
+                    #text_content = tree.xpath('//text()')
+                    text_content_noHTML = tree.text_content()
+                    words.extend(text_content_noHTML.split())
+                    
                     # Extract links from the tree.
                     # Links are identified by href attributes
                     for link in tree.xpath('//a/@href'):
@@ -136,13 +221,12 @@ class Crawler:
                         #urlJoin(base_url, relative_url)
                         absolute_url = urljoin(url_data['final_url'], link)
                         outputLinks.append(absolute_url)
-                        
             except etree.ParserError:
                 pass
             except ValueError:
                 pass
             
-        return outputLinks
+        return outputLinks, words
     
 
     def is_valid(self, url):
@@ -154,7 +238,6 @@ class Crawler:
         parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
             return False
-        
         
         try:
             if parsed.scheme not in {"http","https"}:
@@ -176,6 +259,86 @@ class Crawler:
         Repetetive patterns
         Pages with duplicate tiles, meta descriptions, headings
         
-        
         '''
+    
+    def tokenize(self,fData):
+        #alphanumeric - we are referring to English alphabet a-z and number 0-9
+        acceptableCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        tokens = []
+        i = 0
+        temp = ""
+        while (i < len(fData)):
+            if (fData[i] in acceptableCharacters) or fData[i].isnumeric():
+                temp += fData[i]
+                #reached end of file and file end contains a qualifying char
+                if i == len(fData) - 1:           
+                    temp = temp.lower()
+                    tokens.append(temp)
+                    temp = ""
+                i += 1
+                continue
+            elif temp == "":
+                i += 1
+            elif temp != "" and i == len(fData):
+                temp = temp.lower()
+                tokens.append(temp)
+                temp = ""
+            else:
+                temp = temp.lower()
+                tokens.append(temp)
+                temp = ""
+                
+        return tokens
+
+    #Map<Token,Count> computeWordFrequencies(List<Token>) O(n)
+    def computeWordFrequencies(self,tList):
+        freqMap = {}
+        for i in tList:
+            if i in freqMap:
+                freqMap[i] += 1
+            else:
+                freqMap[i] = 1
+                
+        return freqMap
+    
+    def sortFreq(self,freqMap): #parameter: dictionary
+        #Convert to a list of tuples
+        unordered = []
+        for key, value in freqMap.items():
+            temp = (key, value)
+            unordered.append(temp) 
         
+        #sorted by frequency (tuples)
+        ordered = self.selectionSort(unordered)
+        
+        #sort alphabetically for ties
+        maxFreq = ordered[0][1]
+        #big list
+        orderedWords = []
+        for i in range(maxFreq, 0, -1):
+            #locate all words with i frequency:
+            words = []
+            for j in ordered:
+                if j[1] == i:
+                    words.append(j[0])
+            #sort alphabetically
+            words.sort()       
+            for k in words:
+                #create tuple (word, freq)
+                temp = (k, i)
+                #add our sorted words to the big list
+                orderedWords.append(temp)
+        
+        return orderedWords
+
+    def selectionSort(self,arr):
+        n = len(arr)
+        for i in range(n):
+            min_index = i
+            for j in range(i+1,n):
+                if arr[min_index][1] < arr[j][1]: #descending order
+                    min_index = j
+            temp = arr[i]
+            arr[i] = arr[min_index]
+            arr[min_index] = temp
+        return arr
